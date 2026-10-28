@@ -1,10 +1,13 @@
 import { getForecast, searchCity } from "./api.js";
 import {
   clearCityResults,
+  getLocationKey,
   renderCityResults,
   renderFavourites,
   renderWeather,
   setError,
+  setFavouriteButton,
+  setLoading,
   setStatus,
   setTodayLabel,
   setUnitButtons
@@ -15,20 +18,96 @@ const searchForm = document.getElementById("search-form");
 const searchInput = document.getElementById("city-search");
 const celsiusButton = document.getElementById("unit-celsius");
 const fahrenheitButton = document.getElementById("unit-fahrenheit");
-const favouriteCities = ["Tokyo", "New York", "Sydney"];
+const favouriteToggle = document.getElementById("favourite-toggle");
+const locationButton = document.getElementById("location-button");
+const favouritesStorageKey = "weatherly-favourites";
+const lastLocationStorageKey = "weatherly-last-location";
 const unitStorageKey = "weatherly-temperature-unit";
-let favourites = [];
+let favourites = readFavourites();
+let favouriteWeather = new Map();
 let activeWeather = null;
+let activeLocation = null;
 let activeRequestController = null;
 let requestSequence = 0;
 let temperatureUnit = localStorage.getItem(unitStorageKey) === "F" ? "F" : "C";
+
+function readFavourites() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(favouritesStorageKey) ?? "[]");
+    if (!Array.isArray(saved)) {
+      throw new Error("Saved favourites must be an array.");
+    }
+
+    return saved.filter((location) =>
+      location &&
+      typeof location.name === "string" &&
+      typeof location.country === "string" &&
+      Number.isFinite(location.latitude) &&
+      Number.isFinite(location.longitude)
+    ).map(({ name, country, latitude, longitude }) => ({
+      name,
+      country,
+      latitude: Number(latitude),
+      longitude: Number(longitude)
+    }));
+  } catch (error) {
+    console.error("Could not read saved favourites.", error);
+    return [];
+  }
+}
+
+function readLastLocation() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(lastLocationStorageKey) ?? "null");
+    if (
+      !saved ||
+      typeof saved.name !== "string" ||
+      typeof saved.country !== "string" ||
+      !Number.isFinite(saved.latitude) ||
+      !Number.isFinite(saved.longitude)
+    ) {
+      return null;
+    }
+
+    return {
+      name: saved.name,
+      country: saved.country,
+      latitude: saved.latitude,
+      longitude: saved.longitude
+    };
+  } catch (error) {
+    console.error("Could not read the last viewed location.", error);
+    return null;
+  }
+}
+
+function renderFavouriteList() {
+  renderFavourites(
+    favourites,
+    favouriteWeather,
+    activeLocation,
+    temperatureUnit,
+    selectFavourite
+  );
+}
 
 function renderDashboard() {
   if (activeWeather) {
     renderWeather(activeWeather, temperatureUnit);
   }
 
-  renderFavourites(favourites, activeWeather?.name ?? "", temperatureUnit, searchCityByName);
+  const isFavourite = activeLocation
+    ? favourites.some((location) => getLocationKey(location) === getLocationKey(activeLocation))
+    : false;
+  setFavouriteButton(isFavourite, Boolean(activeWeather));
+  renderFavouriteList();
+}
+
+function stopLoading() {
+  setLoading(false);
+  if (activeWeather) {
+    renderDashboard();
+  }
 }
 
 function beginRequest() {
@@ -57,8 +136,15 @@ async function loadWeather(location, signal) {
     weekday: "short",
     timeZone: "UTC"
   });
+  const resolvedLocation = {
+    name: location.name,
+    country: location.country,
+    latitude: location.latitude,
+    longitude: location.longitude
+  };
 
   return {
+    location: resolvedLocation,
     name: location.name,
     country: location.country,
     temperature: current.temperature_2m,
@@ -70,7 +156,7 @@ async function loadWeather(location, signal) {
     localTime: new Intl.DateTimeFormat("en", {
       hour: "numeric",
       minute: "2-digit",
-      timeZone: location.timezone
+      timeZone: forecast.timezone || location.timezone || "UTC"
     }).format(new Date()),
     forecast: daily.time.map((date, index) => {
       const conditions = getWeatherCode(daily.weather_code[index]);
@@ -87,7 +173,7 @@ async function loadWeather(location, signal) {
 async function showLocation(location, controller, sequence) {
   clearCityResults();
   setError();
-  setStatus("Loading…");
+  setLoading(true);
 
   try {
     const weather = await loadWeather(location, controller.signal);
@@ -96,14 +182,22 @@ async function showLocation(location, controller, sequence) {
     }
 
     activeWeather = weather;
+    activeLocation = weather.location;
     renderDashboard();
-    setStatus();
+    setLoading(false);
+
+    try {
+      localStorage.setItem(lastLocationStorageKey, JSON.stringify(activeLocation));
+    } catch (error) {
+      setError("Weather loaded, but the last viewed city could not be saved.");
+      console.error("Could not save the last viewed location.", error);
+    }
   } catch (error) {
     if (!isCurrentRequest(sequence) || controller.signal.aborted) {
       return;
     }
 
-    setStatus();
+    stopLoading();
     setError(error instanceof Error ? error.message : "Something went wrong while loading the forecast.");
   }
 }
@@ -117,7 +211,7 @@ async function searchCityByName(cityName) {
   const { controller, sequence } = beginRequest();
   clearCityResults();
   setError();
-  setStatus("Loading…");
+  setLoading(true);
 
   let locations;
   try {
@@ -127,7 +221,7 @@ async function searchCityByName(cityName) {
       return;
     }
 
-    setStatus();
+    stopLoading();
     setError(error instanceof Error ? error.message : "City search failed. Please try again.");
     return;
   }
@@ -137,12 +231,13 @@ async function searchCityByName(cityName) {
   }
 
   if (locations.length === 0) {
-    setStatus();
+    stopLoading();
     setError(`We couldn't find "${cityName}". Check the spelling and try another city.`);
     return;
   }
 
   if (locations.length > 1) {
+    stopLoading();
     renderCityResults(locations, selectLocation);
     setStatus("Choose a location from the list.");
     return;
@@ -151,38 +246,162 @@ async function searchCityByName(cityName) {
   await showLocation(locations[0], controller, sequence);
 }
 
-async function loadFavourite(locationName) {
-  let locations;
-  try {
-    locations = await searchCity(locationName);
-  } catch (error) {
-    throw error;
-  }
-
-  if (locations.length === 0) {
-    throw new Error(`Could not find favourite city "${locationName}".`);
-  }
-
-  let weather;
-  try {
-    weather = await loadWeather(locations[0]);
-  } catch (error) {
-    throw error;
-  }
-
-  return weather;
+async function selectFavourite(location) {
+  await selectLocation(location);
 }
 
-async function loadFavourites() {
-  const results = await Promise.all(favouriteCities.map(async (cityName) => {
-    try {
-      return await loadFavourite(cityName);
-    } catch (error) {
-      console.error(`Could not load ${cityName} for favourites.`, error);
-      return null;
+function toggleFavourite() {
+  if (!activeLocation || !activeWeather) {
+    return;
+  }
+
+  const locationKey = getLocationKey(activeLocation);
+  const existingIndex = favourites.findIndex(
+    (location) => getLocationKey(location) === locationKey
+  );
+
+  if (existingIndex >= 0) {
+    favourites.splice(existingIndex, 1);
+    favouriteWeather.delete(locationKey);
+  } else {
+    const favourite = {
+      name: activeLocation.name,
+      country: activeLocation.country,
+      latitude: activeLocation.latitude,
+      longitude: activeLocation.longitude
+    };
+    favourites.push(favourite);
+    favouriteWeather.set(locationKey, activeWeather);
+  }
+
+  try {
+    localStorage.setItem(favouritesStorageKey, JSON.stringify(favourites));
+  } catch (error) {
+    setError("Could not save your favourites. Check your browser storage settings.");
+    console.error("Could not save favourites.", error);
+    favourites = readFavourites();
+    renderDashboard();
+    return;
+  }
+
+  renderDashboard();
+}
+
+function getGeolocationError(error) {
+  if (error.code === 1) {
+    return new Error("Location permission was denied. Allow location access in your browser settings, then try again.");
+  }
+  if (error.code === 2) {
+    return new Error("Your location is unavailable right now. Check your device location settings and try again.");
+  }
+  if (error.code === 3) {
+    return new Error("Finding your location took too long. Please try again.");
+  }
+
+  return new Error("Your location could not be determined. Please try again.");
+}
+
+function getCurrentPosition() {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error("Location is not supported by this browser. You can still search for a city."));
+      return;
     }
-  }));
-  return results.filter((weather) => weather !== null);
+
+    navigator.geolocation.getCurrentPosition(resolve, reject, {
+      enableHighAccuracy: false,
+      timeout: 12000,
+      maximumAge: 60000
+    });
+  });
+}
+
+async function useCurrentLocation() {
+  const { controller, sequence } = beginRequest();
+  clearCityResults();
+  setError();
+  setLoading(true);
+
+  try {
+    let position;
+    try {
+      position = await getCurrentPosition();
+    } catch (error) {
+      throw error?.code ? getGeolocationError(error) : error;
+    }
+
+    if (!isCurrentRequest(sequence)) {
+      return;
+    }
+
+    await showLocation({
+      name: "Your location",
+      country: "Current location",
+      latitude: position.coords.latitude,
+      longitude: position.coords.longitude,
+      timezone: "auto"
+    }, controller, sequence);
+  } catch (error) {
+    if (!isCurrentRequest(sequence) || controller.signal.aborted) {
+      return;
+    }
+
+    stopLoading();
+    setError(error instanceof Error ? error.message : "Your location could not be determined.");
+  }
+}
+
+async function loadFavouriteWeather(location) {
+  try {
+    const weather = await loadWeather(location);
+    favouriteWeather.set(getLocationKey(location), weather);
+  } catch (error) {
+    console.error(`Could not load forecast for favourite "${location.name}".`, error);
+  }
+}
+
+async function loadDefaultCity() {
+  const { controller, sequence } = beginRequest();
+  setLoading(true);
+
+  let locations;
+  try {
+    locations = await searchCity("London", { signal: controller.signal });
+  } catch (error) {
+    stopLoading();
+    setError(error instanceof Error ? error.message : "Could not load the default city.");
+    return;
+  }
+
+  if (!isCurrentRequest(sequence)) {
+    return;
+  }
+
+  const location = locations.find((result) =>
+    result.name === "London" && result.country === "United Kingdom"
+  ) ?? locations[0];
+
+  if (!location) {
+    stopLoading();
+    setError("Could not find the default city. Search for a city to get started.");
+    return;
+  }
+
+  await showLocation(location, controller, sequence);
+}
+
+async function locationPermissionGranted() {
+  if (!navigator.permissions?.query) {
+    return false;
+  }
+
+  try {
+    const permission = await navigator.permissions.query({ name: "geolocation" });
+    return permission.state === "granted";
+  } catch (error) {
+    console.warn("Could not check geolocation permission; using the last viewed city instead.", error);
+    return false;
+  }
 }
 
 searchForm.addEventListener("submit", (event) => {
@@ -193,6 +412,12 @@ searchForm.addEventListener("submit", (event) => {
     void searchCityByName(cityName);
   }
 });
+
+locationButton.addEventListener("click", () => {
+  void useCurrentLocation();
+});
+
+favouriteToggle.addEventListener("click", toggleFavourite);
 
 celsiusButton.addEventListener("click", () => {
   temperatureUnit = "C";
@@ -211,28 +436,32 @@ fahrenheitButton.addEventListener("click", () => {
 async function startDashboard() {
   setTodayLabel();
   setUnitButtons(temperatureUnit);
-  setStatus("Loading…");
+  renderFavouriteList();
+  setLoading(true);
 
-  const favouritesPromise = loadFavourites();
-  try {
-    await searchCityByName("London");
-  } catch (error) {
-    setStatus();
-    setError(error instanceof Error ? error.message : "The dashboard could not be loaded.");
+  for (const location of favourites) {
+    void loadFavouriteWeather(location).then(() => renderFavouriteList());
   }
 
-  try {
-    favourites = await favouritesPromise;
-    renderDashboard();
-  } catch (error) {
-    console.error("Could not load favourites.", error);
-    setError("Favourite cities could not be loaded.");
+  const lastLocation = readLastLocation();
+  if (lastLocation) {
+    await selectLocation(lastLocation);
+    return;
   }
+
+  if (await locationPermissionGranted()) {
+    await useCurrentLocation();
+    if (activeWeather) {
+      return;
+    }
+  }
+
+  await loadDefaultCity();
 }
 
 try {
   await startDashboard();
 } catch (error) {
-  setStatus();
+  stopLoading();
   setError(error instanceof Error ? error.message : "The dashboard could not be loaded.");
 }

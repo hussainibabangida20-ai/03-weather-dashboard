@@ -27,6 +27,10 @@ function convertTemperature(celsius, unit) {
   return Math.round(temperature);
 }
 
+export function getLocationKey(location) {
+  return `${Number(location.latitude).toFixed(4)},${Number(location.longitude).toFixed(4)}`;
+}
+
 function createForecastCard(day, unit) {
   const card = createElement("article", "forecast-card");
   card.append(
@@ -56,38 +60,57 @@ export function renderWeather(weather, unit) {
   byId("humidity").textContent = `${weather.humidity}%`;
   byId("local-time").textContent = weather.localTime;
   byId("weather-note").textContent = weather.note;
+  byId("current-weather-content").hidden = false;
+  byId("hero-skeleton").hidden = true;
 
   const forecast = byId("forecast-list");
   forecast.replaceChildren(...weather.forecast.map((day) => createForecastCard(day, unit)));
 }
 
-export function renderFavourites(favourites, activeCity, unit, onSelect) {
+export function renderFavourites(favourites, favouriteWeather, activeLocation, unit, onSelect) {
   const list = byId("favourites-list");
   const fragment = document.createDocumentFragment();
 
-  favourites.forEach((weather) => {
+  favourites.forEach((location) => {
+    const weather = favouriteWeather.get(getLocationKey(location));
     const item = document.createElement("li");
     const button = createElement("button", "favourite-button");
     button.type = "button";
-    button.setAttribute("aria-current", String(weather.name === activeCity));
-    button.setAttribute("aria-label", `${weather.name}, ${formatTemperature(weather.temperature, unit)}, ${weather.condition}`);
+    button.setAttribute("aria-current", String(
+      activeLocation && getLocationKey(location) === getLocationKey(activeLocation)
+    ));
+    button.setAttribute(
+      "aria-label",
+      weather
+        ? `${location.name}, ${formatTemperature(weather.temperature, unit)}, ${weather.condition}`
+        : `${location.name}, ${location.country}`
+    );
 
-    const emoji = createElement("span", "favourite-emoji", weather.icon);
+    const emoji = createElement("span", "favourite-emoji", weather?.icon ?? "📍");
     emoji.setAttribute("aria-hidden", "true");
     const city = createElement("span", "favourite-city");
     city.append(
-      createElement("strong", "", weather.name),
-      createElement("span", "", weather.condition)
+      createElement("strong", "", location.name),
+      createElement("span", "", weather?.condition ?? location.country)
     );
     button.append(
       emoji,
       city,
-      createElement("span", "favourite-temperature", formatTemperature(weather.temperature, unit))
+      createElement(
+        "span",
+        "favourite-temperature",
+        weather ? formatTemperature(weather.temperature, unit) : ""
+      )
     );
-    button.addEventListener("click", () => onSelect(weather.name));
+    button.addEventListener("click", () => onSelect(location));
     item.append(button);
     fragment.append(item);
   });
+
+  if (favourites.length === 0) {
+    const empty = createElement("li", "favourites-empty", "Tap ☆ on a city to save it here.");
+    fragment.append(empty);
+  }
 
   list.replaceChildren(fragment);
   byId("favourite-count").textContent = favourites.length;
@@ -129,10 +152,59 @@ export function setUnitButtons(unit) {
   byId("temperature-unit").textContent = `°${unit}`;
 }
 
+export function setFavouriteButton(isFavourite, isEnabled = true) {
+  const button = byId("favourite-toggle");
+  button.disabled = !isEnabled;
+  button.setAttribute("aria-pressed", String(isFavourite));
+  button.setAttribute(
+    "aria-label",
+    isFavourite ? "Remove city from favourites" : "Add city to favourites"
+  );
+  button.querySelector("span").textContent = isFavourite ? "★" : "☆";
+}
+
+export function setLoading(isLoading) {
+  const status = byId("status-message");
+  const heroSkeleton = byId("hero-skeleton");
+  const currentWeather = byId("current-weather-content");
+  const forecast = byId("forecast-list");
+
+  if (isLoading) {
+    byId("favourite-toggle").disabled = true;
+  }
+
+  status.textContent = isLoading ? "Loading weather…" : "";
+  status.hidden = !isLoading;
+  status.classList.toggle("sr-only", isLoading);
+  heroSkeleton.hidden = !isLoading;
+  currentWeather.hidden = isLoading;
+
+  if (isLoading) {
+    const fragment = document.createDocumentFragment();
+    for (let index = 0; index < 7; index += 1) {
+      const card = createElement("div", "forecast-card forecast-skeleton");
+      card.setAttribute("aria-hidden", "true");
+      card.append(
+        createElement("span", "skeleton skeleton-day"),
+        createElement("span", "skeleton skeleton-icon"),
+        createElement("span", "skeleton skeleton-temps")
+      );
+      fragment.append(card);
+    }
+    forecast.replaceChildren(fragment);
+  } else {
+    status.classList.remove("sr-only");
+    if (!byId("city-name").textContent || byId("city-name").textContent === "Choose a city") {
+      forecast.replaceChildren();
+    }
+  }
+}
+
 export function setStatus(message = "") {
   const status = byId("status-message");
   status.textContent = message;
   status.hidden = !message;
+  status.classList.remove("sr-only");
 }
 
 export function setError(message = "") {

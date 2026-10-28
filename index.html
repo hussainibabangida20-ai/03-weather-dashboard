@@ -33,6 +33,7 @@
             <button type="submit">Search</button>
           </form>
           <ul class="city-results" id="city-results" role="listbox" aria-label="Matching cities" hidden></ul>
+          <button class="location-button" id="location-button" type="button">◎ Use my location</button>
         </div>
       </header>
 
@@ -59,32 +60,45 @@
                 <h2 id="city-name">Choose a city</h2>
                 <p class="location-line"><span aria-hidden="true">⌖</span> <span id="country-name">Search above to get started</span></p>
               </div>
-              <div class="local-time">
-                <span class="local-time-dot" aria-hidden="true"></span>
-                <span id="local-time">Your local time</span>
+              <div class="hero-actions">
+                <button class="favourite-toggle" id="favourite-toggle" type="button" aria-pressed="false" aria-label="Add city to favourites" disabled>
+                  <span aria-hidden="true">☆</span>
+                </button>
+                <div class="local-time">
+                  <span class="local-time-dot" aria-hidden="true"></span>
+                  <span id="local-time">Your local time</span>
+                </div>
               </div>
             </div>
 
-            <div class="weather-summary">
-              <div class="temperature-wrap">
-                <span class="temperature" id="temperature">—</span><span class="temperature-unit" id="temperature-unit">°C</span>
+            <div id="current-weather-content">
+              <div class="weather-summary">
+                <div class="temperature-wrap">
+                  <span class="temperature" id="temperature">—</span><span class="temperature-unit" id="temperature-unit">°C</span>
+                </div>
+                <div class="condition-wrap">
+                  <span class="condition-icon" id="condition-icon" aria-hidden="true">🌤️</span>
+                  <span class="condition" id="condition">Search for a city</span>
+                </div>
               </div>
-              <div class="condition-wrap">
-                <span class="condition-icon" id="condition-icon" aria-hidden="true">🌤️</span>
-                <span class="condition" id="condition">Search for a city</span>
+
+              <div class="hero-footer">
+                <p class="weather-note" id="weather-note">Choose a location to see live weather.</p>
+                <div class="weather-detail">
+                  <span class="detail-icon" aria-hidden="true">↗</span>
+                  <span><span class="detail-label">Wind</span><strong id="wind-speed">—</strong></span>
+                </div>
+                <div class="weather-detail">
+                  <span class="detail-icon" aria-hidden="true">◌</span>
+                  <span><span class="detail-label">Humidity</span><strong id="humidity">—</strong></span>
+                </div>
               </div>
             </div>
-
-            <div class="hero-footer">
-              <p class="weather-note" id="weather-note">Choose a location to see live weather.</p>
-              <div class="weather-detail">
-                <span class="detail-icon" aria-hidden="true">↗</span>
-                <span>                <span class="detail-label">Wind</span><strong id="wind-speed">—</strong></span>
-              </div>
-              <div class="weather-detail">
-                <span class="detail-icon" aria-hidden="true">◌</span>
-                <span><span class="detail-label">Humidity</span><strong id="humidity">—</strong></span>
-              </div>
+            <div class="hero-skeleton" id="hero-skeleton" aria-hidden="true" hidden>
+              <span class="skeleton skeleton-label"></span>
+              <span class="skeleton skeleton-temperature"></span>
+              <span class="skeleton skeleton-condition"></span>
+              <span class="skeleton skeleton-footer"></span>
             </div>
           </section>
 
