@@ -16,19 +16,24 @@
           <span class="brand-mark" aria-hidden="true">☀</span>
           <span>weatherly</span>
         </a>
-        <form class="search-form" id="search-form" role="search">
-          <label class="sr-only" for="city-search">Search for a city</label>
-          <span class="search-icon" aria-hidden="true">⌕</span>
-          <input
-            id="city-search"
-            name="city"
-            type="search"
-            placeholder="Search a city..."
-            autocomplete="off"
-            required
-          >
-          <button type="submit">Search</button>
-        </form>
+        <div class="search-area">
+          <form class="search-form" id="search-form" role="search">
+            <label class="sr-only" for="city-search">Search for a city</label>
+            <span class="search-icon" aria-hidden="true">⌕</span>
+            <input
+              id="city-search"
+              name="city"
+              type="search"
+              placeholder="Search a city..."
+              autocomplete="off"
+              aria-controls="city-results"
+              aria-expanded="false"
+              required
+            >
+            <button type="submit">Search</button>
+          </form>
+          <ul class="city-results" id="city-results" role="listbox" aria-label="Matching cities" hidden></ul>
+        </div>
       </header>
 
       <div class="dashboard-layout">
@@ -38,37 +43,43 @@
               <p class="eyebrow">YOUR WEATHER, AT A GLANCE</p>
               <h1>Good morning<span class="heading-period">.</span></h1>
             </div>
-            <span class="today-label" id="today-label"></span>
+            <div class="heading-actions">
+              <span class="today-label" id="today-label"></span>
+              <div class="unit-toggle" role="group" aria-label="Temperature units">
+                <button class="unit-button" id="unit-celsius" type="button" aria-pressed="true">°C</button>
+                <button class="unit-button" id="unit-fahrenheit" type="button" aria-pressed="false">°F</button>
+              </div>
+            </div>
           </div>
 
           <section class="hero-card glass-card" aria-labelledby="city-name">
             <div class="hero-topline">
               <div>
                 <p class="eyebrow">CURRENT WEATHER</p>
-                <h2 id="city-name">London</h2>
-                <p class="location-line"><span aria-hidden="true">⌖</span> <span id="country-name">United Kingdom</span></p>
+                <h2 id="city-name">Choose a city</h2>
+                <p class="location-line"><span aria-hidden="true">⌖</span> <span id="country-name">Search above to get started</span></p>
               </div>
               <div class="local-time">
                 <span class="local-time-dot" aria-hidden="true"></span>
-                <span id="local-time">Local time</span>
+                <span id="local-time">Your local time</span>
               </div>
             </div>
 
             <div class="weather-summary">
               <div class="temperature-wrap">
-                <span class="temperature" id="temperature">18</span><span class="temperature-unit">°</span>
+                <span class="temperature" id="temperature">—</span><span class="temperature-unit" id="temperature-unit">°C</span>
               </div>
               <div class="condition-wrap">
                 <span class="condition-icon" id="condition-icon" aria-hidden="true">🌤️</span>
-                <span class="condition" id="condition">Partly cloudy</span>
+                <span class="condition" id="condition">Search for a city</span>
               </div>
             </div>
 
             <div class="hero-footer">
-              <p class="weather-note" id="weather-note">A little sun between the clouds.</p>
+              <p class="weather-note" id="weather-note">Choose a location to see live weather.</p>
               <div class="weather-detail">
                 <span class="detail-icon" aria-hidden="true">↗</span>
-                <span><span class="detail-label">Wind</span><strong id="wind-speed">12 km/h</strong></span>
+                <span>                <span class="detail-label">Wind</span><strong id="wind-speed">—</strong></span>
               </div>
               <div class="weather-detail">
                 <span class="detail-icon" aria-hidden="true">◌</span>
