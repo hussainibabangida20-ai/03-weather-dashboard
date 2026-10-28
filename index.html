@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#111a3a">
+    <meta name="description" content="A simple, beautiful weather dashboard.">
+    <title>Weatherly — Your weather, at a glance</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <script type="module" src="js/app.js"></script>
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="topbar">
+        <a class="brand" href="#" aria-label="Weatherly home">
+          <span class="brand-mark" aria-hidden="true">☀</span>
+          <span>weatherly</span>
+        </a>
+        <form class="search-form" id="search-form" role="search">
+          <label class="sr-only" for="city-search">Search for a city</label>
+          <span class="search-icon" aria-hidden="true">⌕</span>
+          <input
+            id="city-search"
+            name="city"
+            type="search"
+            placeholder="Search a city..."
+            autocomplete="off"
+            required
+          >
+          <button type="submit">Search</button>
+        </form>
+      </header>
+
+      <div class="dashboard-layout">
+        <main class="weather-content">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">YOUR WEATHER, AT A GLANCE</p>
+              <h1>Good morning<span class="heading-period">.</span></h1>
+            </div>
+            <span class="today-label" id="today-label"></span>
+          </div>
+
+          <section class="hero-card glass-card" aria-labelledby="city-name">
+            <div class="hero-topline">
+              <div>
+                <p class="eyebrow">CURRENT WEATHER</p>
+                <h2 id="city-name">London</h2>
+                <p class="location-line"><span aria-hidden="true">⌖</span> <span id="country-name">United Kingdom</span></p>
+              </div>
+              <div class="local-time">
+                <span class="local-time-dot" aria-hidden="true"></span>
+                <span id="local-time">Local time</span>
+              </div>
+            </div>
+
+            <div class="weather-summary">
+              <div class="temperature-wrap">
+                <span class="temperature" id="temperature">18</span><span class="temperature-unit">°</span>
+              </div>
+              <div class="condition-wrap">
+                <span class="condition-icon" id="condition-icon" aria-hidden="true">🌤️</span>
+                <span class="condition" id="condition">Partly cloudy</span>
+              </div>
+            </div>
+
+            <div class="hero-footer">
+              <p class="weather-note" id="weather-note">A little sun between the clouds.</p>
+              <div class="weather-detail">
+                <span class="detail-icon" aria-hidden="true">↗</span>
+                <span><span class="detail-label">Wind</span><strong id="wind-speed">12 km/h</strong></span>
+              </div>
+            </div>
+          </section>
+
+          <section class="forecast-section" aria-labelledby="forecast-title">
+            <div class="section-title-row">
+              <div>
+                <p class="eyebrow">THE WEEK AHEAD</p>
+                <h2 id="forecast-title">7-day forecast</h2>
+              </div>
+              <span class="forecast-caption">A little look ahead</span>
+            </div>
+            <div class="forecast-grid" id="forecast-list"></div>
+          </section>
+        </main>
+
+        <aside class="sidebar glass-card" aria-labelledby="favourites-title">
+          <div class="section-title-row sidebar-heading">
+            <div>
+              <p class="eyebrow">YOUR PLACES</p>
+              <h2 id="favourites-title">Favourites</h2>
+            </div>
+            <span class="favourite-count" id="favourite-count">0</span>
+          </div>
+          <p class="sidebar-description">A quick peek at the places you care about.</p>
+          <ul class="favourites-list" id="favourites-list"></ul>
+          <div class="sidebar-tip">
+            <span class="tip-icon" aria-hidden="true">✦</span>
+            <p><strong>Little tip</strong><br>Tap a place to see its forecast.</p>
+          </div>
+        </aside>
+      </div>
+
+      <div class="status-area" aria-live="polite">
+        <p id="status-message" class="status-message" role="status" hidden></p>
+        <p id="error-message" class="error-message" role="alert" hidden></p>
+      </div>
+
+      <footer class="page-footer">
+        <span>Made for brighter days</span>
+        <span class="footer-sun" aria-hidden="true">☼</span>
+      </footer>
+    </div>
+  </body>
+</html>
