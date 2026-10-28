@@ -33,6 +33,7 @@ export function renderWeather(weather) {
   byId("condition").textContent = weather.condition;
   byId("condition-icon").textContent = weather.icon;
   byId("wind-speed").textContent = `${weather.windSpeed} km/h`;
+  byId("humidity").textContent = `${weather.humidity}%`;
   byId("local-time").textContent = weather.localTime;
   byId("weather-note").textContent = weather.note;
 

@@ -1,125 +1,56 @@
-const cities = {
-  london: {
-    name: "London",
-    country: "United Kingdom",
-    timeZone: "Europe/London",
-    temperature: 18,
-    condition: "Partly cloudy",
-    icon: "🌤️",
-    windSpeed: 12,
-    note: "A little sun between the clouds.",
-    forecast: [
-      { day: "Today", icon: "🌤️", high: 19, low: 12 },
-      { day: "Tue", icon: "☀️", high: 21, low: 13 },
-      { day: "Wed", icon: "🌦️", high: 17, low: 11 },
-      { day: "Thu", icon: "🌧️", high: 15, low: 10 },
-      { day: "Fri", icon: "⛅", high: 18, low: 12 },
-      { day: "Sat", icon: "☀️", high: 22, low: 14 },
-      { day: "Sun", icon: "🌤️", high: 20, low: 13 }
-    ]
-  },
-  tokyo: {
-    name: "Tokyo",
-    country: "Japan",
-    timeZone: "Asia/Tokyo",
-    temperature: 24,
-    condition: "Sunny",
-    icon: "☀️",
-    windSpeed: 8,
-    note: "Clear skies and a lovely afternoon.",
-    forecast: [
-      { day: "Today", icon: "☀️", high: 26, low: 18 },
-      { day: "Tue", icon: "🌤️", high: 25, low: 19 },
-      { day: "Wed", icon: "⛅", high: 23, low: 18 },
-      { day: "Thu", icon: "🌧️", high: 20, low: 17 },
-      { day: "Fri", icon: "🌦️", high: 22, low: 17 },
-      { day: "Sat", icon: "☀️", high: 27, low: 19 },
-      { day: "Sun", icon: "☀️", high: 28, low: 20 }
-    ]
-  },
-  "new york": {
-    name: "New York",
-    country: "United States",
-    timeZone: "America/New_York",
-    temperature: 16,
-    condition: "Light showers",
-    icon: "🌦️",
-    windSpeed: 16,
-    note: "A passing shower, then brighter skies.",
-    forecast: [
-      { day: "Today", icon: "🌦️", high: 18, low: 12 },
-      { day: "Tue", icon: "☁️", high: 17, low: 11 },
-      { day: "Wed", icon: "🌤️", high: 20, low: 13 },
-      { day: "Thu", icon: "☀️", high: 23, low: 15 },
-      { day: "Fri", icon: "⛅", high: 21, low: 14 },
-      { day: "Sat", icon: "🌧️", high: 18, low: 12 },
-      { day: "Sun", icon: "🌤️", high: 20, low: 13 }
-    ]
-  },
-  sydney: {
-    name: "Sydney",
-    country: "Australia",
-    timeZone: "Australia/Sydney",
-    temperature: 22,
-    condition: "Mostly sunny",
-    icon: "🌤️",
-    windSpeed: 11,
-    note: "Sunshine to make the most of the day.",
-    forecast: [
-      { day: "Today", icon: "🌤️", high: 24, low: 17 },
-      { day: "Tue", icon: "☀️", high: 25, low: 18 },
-      { day: "Wed", icon: "☀️", high: 26, low: 18 },
-      { day: "Thu", icon: "⛅", high: 23, low: 17 },
-      { day: "Fri", icon: "🌦️", high: 21, low: 16 },
-      { day: "Sat", icon: "🌤️", high: 22, low: 16 },
-      { day: "Sun", icon: "☀️", high: 25, low: 18 }
-    ]
-  },
-  reykjavik: {
-    name: "Reykjavik",
-    country: "Iceland",
-    timeZone: "Atlantic/Reykjavik",
-    temperature: 9,
-    condition: "Cloudy",
-    icon: "☁️",
-    windSpeed: 19,
-    note: "Breezy outside; a warm layer might help.",
-    forecast: [
-      { day: "Today", icon: "☁️", high: 10, low: 6 },
-      { day: "Tue", icon: "🌦️", high: 9, low: 5 },
-      { day: "Wed", icon: "🌧️", high: 8, low: 4 },
-      { day: "Thu", icon: "☁️", high: 9, low: 5 },
-      { day: "Fri", icon: "🌤️", high: 11, low: 6 },
-      { day: "Sat", icon: "⛅", high: 10, low: 6 },
-      { day: "Sun", icon: "🌦️", high: 8, low: 4 }
-    ]
-  }
-};
+const GEOCODING_URL = "https://geocoding-api.open-meteo.com/v1/search";
+const FORECAST_URL = "https://api.open-meteo.com/v1/forecast";
 
-const favourites = ["Tokyo", "New York", "Sydney"];
+export async function fetchJson(url) {
+  let response;
 
-function getLocalTime(timeZone) {
-  return new Intl.DateTimeFormat("en", {
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone
-  }).format(new Date());
-}
-
-export async function getWeather(cityName) {
-  const city = cities[cityName.trim().toLocaleLowerCase()];
-
-  if (!city) {
-    throw new Error(`No placeholder forecast is available for "${cityName.trim()}". Try London, Tokyo, New York, Sydney, or Reykjavik.`);
+  try {
+    response = await fetch(url);
+  } catch (error) {
+    const reason = error instanceof Error ? `: ${error.message}` : "";
+    throw new Error(`Could not connect to the weather service${reason}`);
   }
 
-  return {
-    ...city,
-    forecast: city.forecast.map((day) => ({ ...day })),
-    localTime: getLocalTime(city.timeZone)
-  };
+  if (!response.ok) {
+    throw new Error(`Weather service returned ${response.status} ${response.statusText || "error"}.`);
+  }
+
+  try {
+    return await response.json();
+  } catch (error) {
+    const reason = error instanceof Error ? `: ${error.message}` : "";
+    throw new Error(`Weather service returned an invalid response${reason}`);
+  }
 }
 
-export async function getFavourites() {
-  return Promise.all(favourites.map((city) => getWeather(city)));
+export async function searchCity(name) {
+  const url = `${GEOCODING_URL}?name=${encodeURIComponent(name.trim())}&count=5`;
+  let data;
+
+  try {
+    data = await fetchJson(url);
+  } catch (error) {
+    const reason = error instanceof Error ? `: ${error.message}` : "";
+    throw new Error(`City search failed${reason}`);
+  }
+
+  return (data.results ?? []).map((result) => ({
+    name: result.name,
+    country: result.country ?? "Unknown country",
+    latitude: result.latitude,
+    longitude: result.longitude,
+    timezone: result.timezone ?? "UTC"
+  }));
+}
+
+export async function getForecast(lat, lon) {
+  const query = new URLSearchParams({
+    latitude: String(lat),
+    longitude: String(lon),
+    current: "temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m",
+    daily: "weather_code,temperature_2m_max,temperature_2m_min",
+    timezone: "auto"
+  });
+
+  return fetchJson(`${FORECAST_URL}?${query.toString()}`);
 }
